@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { Character, ChapterData, GenerationStep, ParsedChapterPlan } from '../types';
-import { generateGeminiText } from '../services/geminiService';
+import { generateText } from '../services/llmService';
 import { extractCharactersFromString, extractWorldNameFromString, extractMotifsFromString, parseChapterPlanBlock, extractTimelineInfo, extractEmotionalArcInfo } from '../utils/parserUtils';
 
 const useBookGenerator = () => {
@@ -81,7 +81,7 @@ ${fullPlan}
 
 Respond ONLY with the plan for Chapter ${chapterNumber}. Do not add any other text.`;
     try {
-      return await generateGeminiText(fallbackPrompt, "You are a data extraction assistant.");
+      return await generateText(fallbackPrompt, "You are a data extraction assistant.");
     } catch (e) {
       console.error(`Error extracting plan for Chapter ${chapterNumber} via LLM fallback:`, e);
       return null;
@@ -130,22 +130,22 @@ Ensure proper rising action, climax, and resolution.
 For the climax chapters (e.g., chapters ${Math.max(1, chaptersCount - 2)} and ${Math.max(1, chaptersCount - 1)}), provide extra detail.
 Make sure all character names, settings, and plot elements remain 100% consistent throughout this outline.
 The entire output should be a single, coherent text document.`;
-      const outlineText = await generateGeminiText(promptOutline, systemPromptOutline);
+      const outlineText = await generateText(promptOutline, systemPromptOutline);
       if (!outlineText) throw new Error("Failed to generate story outline.");
       setCurrentStoryOutline(outlineText);
 
       // 2. Extract Characters, World Name, Motifs from Outline
       setCurrentStep(GenerationStep.ExtractingCharacters);
-      const extractedChars = await extractCharactersFromString(outlineText, generateGeminiText);
+      const extractedChars = await extractCharactersFromString(outlineText, generateText);
       setCharacters(extractedChars);
       charactersRef.current = extractedChars;
 
       setCurrentStep(GenerationStep.ExtractingWorldName);
-      const extractedWorldName = await extractWorldNameFromString(outlineText, generateGeminiText);
+      const extractedWorldName = await extractWorldNameFromString(outlineText, generateText);
       setWorldName(extractedWorldName);
       
       setCurrentStep(GenerationStep.ExtractingMotifs);
-      const extractedMotifs = await extractMotifsFromString(outlineText, generateGeminiText);
+      const extractedMotifs = await extractMotifsFromString(outlineText, generateText);
       setRecurringMotifs(extractedMotifs);
 
       // 3. Create Detailed Chapter Plan
@@ -177,7 +177,7 @@ Connection to Next Chapter (Hook/Transition): [How does this chapter end to crea
 Ensure every chapter from 1 to ${chaptersCount} has a plan in this exact format.
 Be extremely specific and detailed. This plan is critical for ensuring narrative consistency and will be used directly for chapter generation.
 Do not add any commentary outside of the plan structure for each chapter.`;
-      const detailedPlanText = await generateGeminiText(chapterPlanPrompt, systemPromptPlan);
+      const detailedPlanText = await generateText(chapterPlanPrompt, systemPromptPlan);
       if (!detailedPlanText || !detailedPlanText.includes("--- START CHAPTER 1 PLAN ---")) {
         throw new Error("Failed to generate a valid and parseable chapter plan.");
       }
@@ -249,7 +249,7 @@ The opening paragraph(s) should:
 4. Avoid redundant summarization.
 5. Set the initial emotional tone and focus for this chapter, aligning with its plan.
 Generate ONLY the 1-2 opening paragraphs for Chapter ${i}. Do not write "Chapter X begins..." Just write the prose.`;
-          chapterOpenerText = await generateGeminiText(openerPrompt, "You are a master storyteller specializing in chapter openings.");
+          chapterOpenerText = await generateText(openerPrompt, "You are a master storyteller specializing in chapter openings.");
         }
         
         let motifInstructionText = "";
@@ -289,7 +289,7 @@ GUIDELINES:
 
 Format with proper paragraphing and dialogue. Begin with the chapter title on its own line, then the chapter content.`;
 
-        let chapterContent = await generateGeminiText(chapterGenPrompt, systemPromptWriter);
+        let chapterContent = await generateText(chapterGenPrompt, systemPromptWriter);
         if (!chapterContent) throw new Error(`Failed to generate content for Chapter ${i}.`);
 
         // Consistency Check & Fix (Simplified loop from Python)
@@ -315,7 +315,7 @@ ${chapterContent}
 Identify ANY inconsistencies (Character, Plot, Setting, Timeline, Motif, Unexplained elements, Deviation from Plan).
 If ANY inconsistencies, list them. Otherwise, respond ONLY with "CONSISTENT". Be very critical.`;
             
-            const consistencyCheckResult = await generateGeminiText(consistencyPrompt, consistencySystemPrompt);
+            const consistencyCheckResult = await generateText(consistencyPrompt, consistencySystemPrompt);
             if (consistencyCheckResult.toUpperCase().includes("CONSISTENT")) {
                 break; 
             } else {
@@ -332,7 +332,7 @@ ORIGINAL DRAFT OF CHAPTER ${i}: ${chapterContent}
 IDENTIFIED CONSISTENCY ISSUES TO FIX: ${consistencyCheckResult}
 
 Rewrite the entire chapter, starting with title "${plannedTitle}".`;
-                    const fixedContent = await generateGeminiText(fixPrompt, fixPromptSystem);
+                    const fixedContent = await generateText(fixPrompt, fixPromptSystem);
                     if (fixedContent) chapterContent = fixedContent;
                 }
             }
@@ -342,7 +342,7 @@ Rewrite the entire chapter, starting with title "${plannedTitle}".`;
         const summaryPrompt = `Create a detailed summary (200-300 words) of Chapter ${i} ("${plannedTitle}"). Include key plot developments, character actions/decisions/development, setting details, important dialogue/revelations, emotional tone shifts, and connections to previous events. Focus on factual recall.
 CHAPTER CONTENT:
 ${chapterContent}`;
-        chapterSummariesRef.current[i] = await generateGeminiText(summaryPrompt, "You are a literary analyst specializing in narrative structure.");
+        chapterSummariesRef.current[i] = await generateText(summaryPrompt, "You are a literary analyst specializing in narrative structure.");
         
         // Simplified character update from Python - assumes LLM can parse and format correctly
         const charUpdatePrompt = `Based on Chapter ${i} ("${plannedTitle}") content, track development/status of characters: ${Object.keys(charactersRef.current).join(', ')}.
@@ -356,7 +356,7 @@ Format as: CHARACTER NAME: status | development/actions | relationships | locati
 If a character doesn't appear, omit. If info missing, use "not specified". Be concise.
 CHAPTER CONTENT:
 ${chapterContent}`;
-        const charUpdatesText = await generateGeminiText(charUpdatePrompt, "You are a narrative continuity expert for character tracking.");
+        const charUpdatesText = await generateText(charUpdatePrompt, "You are a narrative continuity expert for character tracking.");
         // Basic parsing of charUpdatesText (could be improved with regex from parserUtils)
         charUpdatesText.split('\n').forEach(line => {
             const parts = line.split(':');
@@ -384,7 +384,7 @@ ${chapterContent}`;
 Reply in format: TIME_ELAPSED_IN_CHAPTER: [...] END_TIME_OF_CHAPTER: [...] SPECIFIC_TIME_MARKERS_MENTIONED: [...]
 CHAPTER CONTENT:
 ${chapterContent}`;
-        timelineRef.current[i] = await generateGeminiText(timelinePrompt, "You are a literary analyst for temporal structure.");
+        timelineRef.current[i] = await generateText(timelinePrompt, "You are a literary analyst for temporal structure.");
 
         const emotionalArcPrompt = `Analyze emotional tone/tension at END of Chapter ${i} ("${plannedTitle}"):
 1. Primary emotion evoked at chapter's very end.
@@ -393,7 +393,7 @@ ${chapterContent}`;
 Reply: PRIMARY_ENDING_EMOTION: [...] TENSION_LEVEL_AT_END: [...] UNRESOLVED_HOOK_OR_QUESTION: [...]
 CHAPTER CONTENT (focus on ending):
 ${chapterContent.slice(-1500)}`; // Analyze last part
-        emotionalArcRef.current[i] = await generateGeminiText(emotionalArcPrompt, "You are a literary analyst for emotional arcs.");
+        emotionalArcRef.current[i] = await generateText(emotionalArcPrompt, "You are a literary analyst for emotional arcs.");
 
         if (i < chaptersCount) {
             const nextChapterPlanText = await _getChapterPlanForChapter(i + 1, detailedPlanText);
@@ -408,7 +408,7 @@ RECURRING MOTIF (optional, weave subtly): ${recurringMotifs.length > 0 ? recurri
         
 Transition should provide closure but leave reader wanting more, create strong hook/suspense/foreshadowing for Ch ${i+1}.
 Generate ONLY the 1-2 transition paragraphs. These will replace original final paragraphs of Chapter ${i}.`;
-            const transitionText = await generateGeminiText(transitionPrompt, "You are a master storyteller for chapter endings.");
+            const transitionText = await generateText(transitionPrompt, "You are a master storyteller for chapter endings.");
             if (transitionText) {
                 transitionsRef.current[i] = transitionText;
                 // Replace last part of chapterContent with transitionText (simplified)
@@ -437,7 +437,7 @@ Generate ONLY the 1-2 transition paragraphs. These will replace original final p
       // 6. Compile Book
       setCurrentStep(GenerationStep.CompilingBook);
       const titlePrompt = `Create a compelling and marketable title for a book with premise: "${premise}" and outline snippet: "${outlineText.substring(0,500)}...". World: "${worldName}". Reply ONLY with book title.`;
-      let bookTitle = await generateGeminiText(titlePrompt, "You are a book titling expert.");
+      let bookTitle = await generateText(titlePrompt, "You are a book titling expert.");
       bookTitle = bookTitle.trim().replace("#","") || `A Novel: ${premise.substring(0,30)}...`;
 
       let fullBookText = `# ${bookTitle}\n\n`;

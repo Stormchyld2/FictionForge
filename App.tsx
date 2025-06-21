@@ -43,7 +43,7 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-sky-900 text-slate-100 flex flex-col items-center p-4 md:p-8 selection:bg-sky-500 selection:text-white">
       <header className="w-full max-w-4xl mb-8 text-center">
         <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-cyan-300 to-teal-400 py-2">
-          NovelGenerator
+          FictionForge
         </h1>
         <p className="text-slate-400 mt-2 text-sm md:text-base">
           <strong className="text-slate-300">Become an author. Before your coffee gets cold.</strong> <br /><strong className="text-slate-300">Turn ideas into books. With one prompt.</strong>
@@ -117,7 +117,7 @@ const App: React.FC = () => {
         )}
       </main>
       <footer className="w-full max-w-4xl mt-8 text-center text-slate-500 text-xs">
-        <p>&copy; {new Date().getFullYear()} <a href="https://github.com/KazKozDev" target="_blank" rel="noopener noreferrer" className="hover:text-sky-400 transition-colors">KazKozDev</a></p>
+        <p>&copy; {new Date().getFullYear()} <a href="https://github.com/Stormchyld2" target="_blank" rel="noopener noreferrer" className="hover:text-sky-400 transition-colors">Nightwolf Development</a></p>
       </footer>
     </div>
   );
